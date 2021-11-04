@@ -21,9 +21,12 @@
 #     pip install flask
 
 
+from os import stat
 import flask
-from flask import Flask, request
+from flask import Flask, request, redirect
 import json
+
+from flask.wrappers import Response
 app = Flask(__name__)
 app.debug = True
 
@@ -74,27 +77,41 @@ def flask_post_json():
 @app.route("/")
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return redirect('/static/index.html')
 
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    return None
+    try:
+        data = request.get_json(force=True)
+        if data == None:
+            return Response("No valid POST/PUT data detected", status=400)
+    except:
+        return Response("Invalid JSON format", status=400)
+
+    for key, value in data.items():
+        myWorld.update(entity=entity, key=key, value=value)
+
+    json_str = json.dumps(myWorld.get(entity))
+    return Response(json_str, content_type='application/json', status=200)
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    return None
+    json_world = json.dumps(myWorld.world())
+    return Response(json_world, content_type='application/json', status=200)
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    json_entity = json.dumps(myWorld.get(entity))
+    return Response(json_entity, content_type='application/json', status=200)
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
     '''Clear the world out!'''
-    return None
+    myWorld.clear()
+    return Response('{}', content_type='application/json', status=200)
 
 if __name__ == "__main__":
     app.run()
