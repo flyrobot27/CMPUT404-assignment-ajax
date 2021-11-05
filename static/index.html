@@ -7,7 +7,8 @@
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
         Copyright 2013 Abram Hindle
-        
+        Copyright 2021 Steven Heung
+
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
         You may obtain a copy of the License at
@@ -39,23 +40,39 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
             try {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
+                    let responseJson = JSON.parse(xhr.responseText);
                     //XXX: Pass the data to the callback!
+                    callback(responseJson);
                 }
             } 
             catch(e) {
-                alert('Error: ' + e.name);
+                console.log(e);
             }
         }
     };
     //XXX: POST to a URL
+    xhr.open("POST", url, true); // Turn on async
+
     //XXX: set the mimetype and the accept headers!
     // Remember to use application/json !
+    // Setting multiple request header is taking from stackoverflow
+    // Smooth brain didn't knew I could just call the function multiple times
+    // Tried to use a JSON object didn't work
+    // Author: Quentin
+    // URL: https://stackoverflow.com/questions/51132829/how-to-set-multiple-headers-data-with-xmlhttprequest-in-async-mode
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Accept", "application/json");
+
+    let sendJson = JSON.stringify(objects); // convert object to string
+    xhr.send(sendJson);
 }
 
 
 world = {};
 
 //XXX: TODO Make this prettier!
+// My sense of art is non-existenant so I made it worse
+// you are welcome
 function drawCircle(context,entity) {
     with(context) {
         beginPath();              
@@ -65,7 +82,7 @@ function drawCircle(context,entity) {
         //moveTo(x,y);
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
+        arc(x, y, (entity["radius"])?entity["radius"]:70, 0, 3.0 * Math.PI, false);  
         stroke();                                
     }
 }
@@ -138,6 +155,8 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
+    let uri = "http://" + location.host + "/entity/" + entity;
+    sendJSONXMLHTTPRequest(uri, data, drawCircle);
 
 }
 
@@ -247,7 +266,7 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'green'});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
@@ -255,19 +274,41 @@ mouse.mouseuppers.push(function(x,y,clicked,e) {
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':'yellow',
                           'radius':10});
 });
 
 
 function update() {
-    //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    // I will be using Request instead as in the lecture
+    // This method of getting host from location and fetching request is from the lecture
+    // Author: Abram Hindle
+    // URL: https://www.twitch.tv/videos/1195021702
+
+    let uri = "http://" + location.host + "/world";
+
+    // Appending header to Request object is taken from Mozilla documentation
+    // Author: Mozilla
+    // URL: https://developer.mozilla.org/en-US/docs/Web/API/Request/headers
+    let headers = new Headers();
+    headers.append('Accept', 'application/json');
+
+    let request = new Request(uri, headers);
+    
+    // fetch request
+    fetch(request).then(
+        req => req.json() // get request json
+    ).then( data => {
+        world = data; // set data to world
+        drawNextFrame();
+    }).catch( e => console.log(e) );
+
     drawFrame();
 }
 
 // 30 frames per second
 setInterval( update, 1000/30.0);
-
+//setInterval(update, 2000);
 
 
     </script>
